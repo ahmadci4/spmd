@@ -96,11 +96,18 @@
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "YOUR_ONESIGNAL_APP_ID", // TODO: Ganti dengan App ID OneSignal Anda
-          safari_web_id: "web.onesignal.auto.xxxxxx",
-          notifyButton: { enable: true },
-        });
+        const onesignalAppId = "YOUR_ONESIGNAL_APP_ID"; // TODO: Ganti dengan App ID OneSignal Anda
+        
+        // Hanya inisialisasi jika App ID sudah diganti untuk mencegah Error 400 di Console
+        if (onesignalAppId !== "YOUR_ONESIGNAL_APP_ID") {
+            await OneSignal.init({
+              appId: onesignalAppId,
+              safari_web_id: "web.onesignal.auto.xxxxxx",
+              notifyButton: { enable: true },
+            });
+        } else {
+            console.warn("OneSignal dinonaktifkan sementara. Silakan atur App ID yang valid di kode untuk mengaktifkan notifikasi.");
+        }
       });
     </script>
 </head>
@@ -424,10 +431,14 @@
         // --- PENGUMUMAN VIEW ---
         function PengumumanView() {
           const handleSubscribe = () => {
-             if (window.OneSignal) {
-                 window.OneSignal.showSlidedownPrompt();
-             } else {
-                 alert("Sistem notifikasi sedang dimuat atau cek koneksi Anda.");
+             try {
+                 if (window.OneSignal && typeof window.OneSignal.showSlidedownPrompt === 'function') {
+                     window.OneSignal.showSlidedownPrompt();
+                 } else {
+                     alert("Fitur notifikasi belum dikonfigurasi dengan benar. Pastikan Anda telah memasukkan App ID OneSignal yang valid di dalam kode aplikasi.");
+                 }
+             } catch (error) {
+                 alert("Fitur notifikasi belum dapat digunakan karena konfigurasi App ID belum sesuai.");
              }
           };
 
