@@ -150,6 +150,54 @@
 
         const { Home, FileText, ClipboardList, CalendarDays, Info, LogOut, Plus, Trash2, Download, Upload, User, MapPin, Key, Search, Shield, CheckCircle, Bell, Edit, Image, Link, Instagram, MessageCircle, Globe } = Icons;
 
+        // --- SISTEM KOMPRESI GAMBAR (Client-Side Compression) ---
+        // Fungsi ini akan mengecilkan foto 5MB menjadi sekitar 50-100KB agar aplikasi tidak crash
+        const compressImage = (file, callback) => {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                alert('Tolong upload file gambar (JPG/PNG)');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new window.Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Maksimal dimensi 800px sudah sangat cukup HD untuk di kertas A4
+                    const MAX_WIDTH = 800;
+                    const MAX_HEIGHT = 800;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Kompresi kualitas menjadi 70% (0.7)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    callback(dataUrl);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
         // --- LOCAL STORAGE HOOK ---
         function useLocalStorage(key, initialValue) {
           const [storedValue, setStoredValue] = useState(() => {
@@ -621,11 +669,10 @@
 
           const handleUpload = (e) => {
             const file = e.target.files[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onloadend = () => setImage(reader.result);
-              reader.readAsDataURL(file);
-            }
+            // Gunakan fungsi kompresi dari atas sebelum disave
+            compressImage(file, (compressedBase64) => {
+                setImage(compressedBase64);
+            });
           };
 
           return (
@@ -678,11 +725,10 @@
           }
 
           const handleImgUpload = (id, file) => {
-            if (file) {
-              const reader = new FileReader();
-              reader.onloadend = () => updateRow(id, 'img', reader.result);
-              reader.readAsDataURL(file);
-            }
+             // MENGGUNAKAN FUNGSI AUTO COMPRESS
+             compressImage(file, (compressedBase64) => {
+                 updateRow(id, 'img', compressedBase64);
+             });
           };
 
           const handleGenerate = () => {
@@ -719,7 +765,7 @@
                  await html2pdf().set(opt).from(element).save();
              } catch (error) {
                  console.error("Gagal export PDF:", error);
-                 alert("Gagal mengunduh PDF. Pastikan memori HP cukup atau kurangi ukuran/jumlah foto.");
+                 alert("Gagal mengunduh PDF. Pastikan memori HP/Laptop cukup.");
              } finally {
                  // Kembalikan style seperti semula
                  element.style.width = originalWidth;
@@ -824,7 +870,6 @@
                     <button onClick={()=>setMode('form')} disabled={isGenerating} className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-3 rounded-xl transition font-bold text-sm w-full sm:w-auto disabled:opacity-50">
                       <Edit size={18} /> Edit Kembali
                     </button>
-                    {/* HANYA ADA 1 TOMBOL DOWNLOAD PDF UTAMA SEKARANG */}
                     <button onClick={handleDownloadPDF} disabled={isGenerating} className="flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-xl shadow-lg transition font-bold text-sm w-full sm:w-auto disabled:opacity-50">
                       {isGenerating ? <span className="animate-pulse">Memproses PDF...</span> : <><Download size={18} /> Download Laporan (PDF)</>}
                     </button>
